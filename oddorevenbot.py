@@ -17,7 +17,7 @@ from uuid import uuid4
 import re
 
 from telegram.utils.helpers import escape_markdown
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup	
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup,ReplyKeyboardMarkup, ReplyKeyboardRemove	
 from telegram import InlineQueryResultArticle, ParseMode, \
     InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler,CallbackQueryHandler
@@ -49,12 +49,30 @@ def help(bot, update):
 def inlinequery(bot, update):
     """Handle the inline query."""
     query = update.inline_query.query
-    print "Username=",update.message.from_user
-    start_user=update['from']['username']
+    if not query:
+        return
+    start_user=update.inline_query.from_user.username
+    #start_user=update['from']['username']
     start_user=start_user.encode('utf-8')
     
-    start_keyboard = [[InlineKeyboardButton("Start Game ", callback_data='Start Game')]]
+    start_keyboard = [[InlineKeyboardButton("Join Game", callback_data='join')]]
     start_markup = InlineKeyboardMarkup(start_keyboard)
+    
+    #init_text='Waiting for playerssss	:\n'+start_user	
+    results = [
+        InlineQueryResultArticle(
+            id=uuid4(),
+            title="Start Game!",
+            input_message_content=InputTextMessageContent('Game started by:\n@{}\nWaiting for player..'.format(start_user)),
+            reply_markup=start_markup)
+            
+        ]
+
+    update.inline_query.answer(results)
+
+def startbutton(bot, update):	
+    query = update.callback_query	
+    #print query
     
     toss_keyboard = [[  InlineKeyboardButton("1", callback_data='1'),
                  		InlineKeyboardButton("2", callback_data='2'),
@@ -64,19 +82,11 @@ def inlinequery(bot, update):
                  		InlineKeyboardButton("6", callback_data='6')
                     ]]
                 
-    toss_markup = InlineKeyboardMarkup(toss_keyboard)
-    init_text='Players:\n@'+start_user+'\nWaiting for players..'
-    results = [
-        InlineQueryResultArticle(
-            id=uuid4(),
-            title="Start Game!",
-            input_message_content=InputTextMessageContent(init_text),
-            reply_markup=start_markup)
-            
-        ]
-
-    update.inline_query.answer(results)
-
+    toss_markup = ReplyKeyboardMarkup(toss_keyboard)
+    #reply_markup=ReplyKeyboardMarkup(toss_keyboard, one_time_keyboard=True)
+    bot.edit_message_text(text="ODD OR EVEN:\n Perform toss\n Click on any of the buttons below:", chat_id=None,message_id=None, inline_message_id = query.inline_message_id)
+     
+              	
 
 def error(bot, update, error):
     """Log Errors caused by Updates."""
@@ -93,6 +103,8 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CallbackQueryHandler(startbutton))
+    
 
     # on noncommand i.e message - echo the message on Telegram
     dp.add_handler(InlineQueryHandler(inlinequery))
